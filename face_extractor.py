@@ -11,15 +11,18 @@ detector = dlib.get_frontal_face_detector()
 sp = dlib.shape_predictor(predictor_path)
 
 
-def make_part_screen_dull(image):
+def make_part_screen_dull(image, number_of_images_left):
     img = np.zeros((image.shape[0], image.shape[1]), np.uint8)
     cv2.circle(img, (image.shape[1]//2, image.shape[0]//2), min([image.shape[1], image.shape[0]])//4, 255, -1)
 
     points = np.where(img == 0)
     image[points] = image[points]/3
 
-    cv2.putText(image, 'Put face in circle', (image.shape[1]//8, image.shape[0]//10), cv2.FONT_HERSHEY_COMPLEX,
+    cv2.putText(image, 'Put face in circle', (image.shape[1]//7, image.shape[0]//10), cv2.FONT_HERSHEY_COMPLEX,
                 1, (255, 255, 255))
+
+    cv2.putText(image, str(number_of_images_left) + ' images left', (image.shape[1] // 3,
+                image.shape[0] // 10+30), cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 255, 255))
 
     center = (image.shape[1]//2, image.shape[0]//2)
     radius = min([image.shape[1], image.shape[0]])//4
@@ -34,12 +37,12 @@ def make_part_screen_dull(image):
     return [left_x, top_y, right_x, bottom_y]
 
 
-def find_face(image):
-    image = cv2.resize(image, None, fx=0.6, fy=0.6, interpolation=cv2.INTER_AREA)
+def find_face(image, number_of_images_to_take):
+    image = cv2.resize(image, None, fx=0.7, fy=0.7, interpolation=cv2.INTER_AREA)
     img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     orig_image_copy = image.copy()
-    roi_of_face = make_part_screen_dull(orig_image_copy)
+    roi_of_face = make_part_screen_dull(orig_image_copy, number_of_images_to_take)
 
     cv2.imshow('image_with_rec', orig_image_copy)
     button = cv2.waitKey(4)
@@ -80,13 +83,17 @@ def get_faces_from_camera(number_of_images, path_to_save):
     while number_of_images > 0:
         ret, frame = cap.read()
 
-        found = find_face(frame)
+        found = find_face(frame, number_of_images)
 
         if len(found) != 0:
-            gray_image = cv2.cvtColor(found, cv2.COLOR_BGR2GRAY)
-            cv2.imshow('face', mat=gray_image)
-            cv2.imwrite(path_to_save + '/' + str(position_in_directory)+'.png', gray_image)
-            position_in_directory += 1
-            number_of_images -= 1
+            cv2.imshow('face', cv2.cvtColor(found, cv2.COLOR_BGR2RGB))
+            button = cv2.waitKey(0)
 
-get_faces_from_camera(5, 'faces/Egor')
+            if button == 13:
+                gray_image = cv2.cvtColor(found, cv2.COLOR_BGR2GRAY)
+                cv2.imwrite(path_to_save + '/' + str(position_in_directory)+'.png', gray_image)
+                position_in_directory += 1
+                number_of_images -= 1
+
+    cap.release()
+    cv2.destroyAllWindows()
